@@ -1,8 +1,14 @@
+const sanitizeEnvVar = (val) => {
+  if (!val) return val;
+  // Strip single/double quotes and trim any spaces/newlines
+  return val.replace(/['"\\]/g, '').trim();
+};
+
 const sfConfig = {
-  clientId: process.env.SF_CLIENT_ID,
-  clientSecret: process.env.SF_CLIENT_SECRET,
-  callbackUrl: process.env.SF_CALLBACK_URL || 'http://localhost:3001/api/auth/callback',
-  loginUrl: process.env.SF_LOGIN_URL || 'https://login.salesforce.com',
+  clientId: sanitizeEnvVar(process.env.SF_CLIENT_ID),
+  clientSecret: sanitizeEnvVar(process.env.SF_CLIENT_SECRET),
+  callbackUrl: sanitizeEnvVar(process.env.SF_CALLBACK_URL) || 'http://localhost:3001/api/auth/callback',
+  loginUrl: sanitizeEnvVar(process.env.SF_LOGIN_URL) || 'https://login.salesforce.com',
   apiVersion: 'v59.0',
 };
 
@@ -19,3 +25,4 @@ export function buildAuthorizeUrl(state, codeChallenge) {
 }
 
 export default sfConfig;
+
