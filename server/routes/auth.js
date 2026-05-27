@@ -19,8 +19,16 @@ router.get('/login', (req, res) => {
 
   req.session.oauthState = state;
   req.session.codeVerifier = codeVerifier;
-  res.redirect(buildAuthorizeUrl(state, codeChallenge));
+
+  req.session.save((err) => {
+    if (err) {
+      console.error('Session save error during login:', err);
+      return res.status(500).json({ error: 'Failed to initialize session' });
+    }
+    res.redirect(buildAuthorizeUrl(state, codeChallenge));
+  });
 });
+
 
 router.get('/callback', async (req, res) => {
   const { code, state, error, error_description } = req.query;
@@ -70,9 +78,16 @@ router.get('/callback', async (req, res) => {
       orgName,
     };
 
-    const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    res.redirect(`${clientUrl}/dashboard`);
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error during callback:', err);
+        return res.status(500).json({ error: 'Failed to save session credentials' });
+      }
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+      res.redirect(`${clientUrl}/dashboard`);
+    });
   } catch (err) {
+
     console.error('OAuth callback failed:', err.response?.data || err.message);
     res.status(500).json({ error: 'Authentication failed — could not exchange code for tokens' });
   }

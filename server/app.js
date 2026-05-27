@@ -7,7 +7,8 @@ import rulesRoutes from './routes/rules.js';
 const app = express();
 
 // Trust proxy is required for secure cookies on Render
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
+
 
 app.use(cors({
   origin: process.env.CLIENT_URL || 'http://localhost:5173',
