@@ -7,6 +7,18 @@ import authCheck from '../middleware/authCheck.js';
 
 const router = Router();
 
+router.get('/debug', (req, res) => {
+  res.json({
+    secure: req.secure,
+    protocol: req.protocol,
+    ip: req.ip,
+    ips: req.ips,
+    headers: req.headers,
+    session: req.session || null,
+  });
+});
+
+
 router.get('/login', (req, res) => {
   const state = crypto.randomBytes(16).toString('hex');
 
