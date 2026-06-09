@@ -9,10 +9,12 @@ const api = axios.create({
 })
 
 // Login is a full-page redirect, not an AJAX call — go straight to the backend
-export function login() {
+export function login(env) {
   const base = import.meta.env.VITE_API_URL || apiBase
-  window.location.href = `${base}/api/auth/login`
+  const query = env ? `?env=${env}` : ''
+  window.location.href = `${base}/api/auth/login${query}`
 }
+
 
 
 export async function getMe() {

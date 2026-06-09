@@ -8,6 +8,8 @@ import authCheck from '../middleware/authCheck.js';
 const router = Router();
 
 router.get('/login', (req, res) => {
+  const env = req.query.env;
+  const loginUrl = env === 'sandbox' ? 'https://test.salesforce.com' : 'https://login.salesforce.com';
 
   const state = crypto.randomBytes(16).toString('hex');
 
@@ -20,15 +22,17 @@ router.get('/login', (req, res) => {
 
   req.session.oauthState = state;
   req.session.codeVerifier = codeVerifier;
+  req.session.loginUrl = loginUrl;
 
   req.session.save((err) => {
     if (err) {
       console.error('Session save error during login:', err);
       return res.status(500).json({ error: 'Failed to initialize session' });
     }
-    res.redirect(buildAuthorizeUrl(state, codeChallenge));
+    res.redirect(buildAuthorizeUrl(state, codeChallenge, loginUrl));
   });
 });
+
 
 
 router.get('/callback', async (req, res) => {
@@ -51,11 +55,14 @@ router.get('/callback', async (req, res) => {
     return res.status(403).json({ error: 'State mismatch — possible CSRF' });
   }
   const codeVerifier = req.session.codeVerifier;
+  const loginUrl = req.session.loginUrl || 'https://login.salesforce.com';
   delete req.session.oauthState;
   delete req.session.codeVerifier;
+  delete req.session.loginUrl;
 
   try {
-    const tokens = await exchangeCodeForTokens(code, codeVerifier);
+    const tokens = await exchangeCodeForTokens(code, codeVerifier, loginUrl);
+
     const userInfo = await getUserInfo(tokens.instanceUrl, tokens.accessToken);
 
     // Grab the org name so we can show it on the dashboard
@@ -70,6 +77,7 @@ router.get('/callback', async (req, res) => {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       instanceUrl: tokens.instanceUrl,
+      loginUrl,
     };
     req.session.user = {
       id: userInfo.user_id,
@@ -78,6 +86,7 @@ router.get('/callback', async (req, res) => {
       picture: userInfo.picture,
       orgName,
     };
+
 
     req.session.save((err) => {
       if (err) {
@@ -99,11 +108,12 @@ router.get('/me', authCheck, (req, res) => {
 });
 
 router.post('/logout', authCheck, async (req, res) => {
-  await revokeToken(req.session.sf.accessToken);
+  await revokeToken(req.session.sf.accessToken, req.session.sf.loginUrl);
   req.session.destroy((err) => {
     if (err) console.error('Session destroy error:', err);
     res.json({ message: 'Logged out' });
   });
 });
+
 
 export default router;

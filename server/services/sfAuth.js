@@ -1,8 +1,9 @@
 import axios from 'axios';
 import sfConfig from '../config/salesforce.js';
 
-export async function exchangeCodeForTokens(code, codeVerifier) {
-  const resp = await axios.post(`${sfConfig.loginUrl}/services/oauth2/token`, null, {
+export async function exchangeCodeForTokens(code, codeVerifier, loginUrl) {
+  const url = loginUrl || sfConfig.loginUrl;
+  const resp = await axios.post(`${url}/services/oauth2/token`, null, {
     params: {
       grant_type: 'authorization_code',
       code,
@@ -17,8 +18,10 @@ export async function exchangeCodeForTokens(code, codeVerifier) {
   return { accessToken: access_token, refreshToken: refresh_token, instanceUrl: instance_url, idUrl: id };
 }
 
-export async function refreshAccessToken(refreshToken) {
-  const resp = await axios.post(`${sfConfig.loginUrl}/services/oauth2/token`, null, {
+
+export async function refreshAccessToken(refreshToken, loginUrl) {
+  const url = loginUrl || sfConfig.loginUrl;
+  const resp = await axios.post(`${url}/services/oauth2/token`, null, {
     params: {
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
@@ -33,6 +36,7 @@ export async function refreshAccessToken(refreshToken) {
   };
 }
 
+
 export async function getUserInfo(instanceUrl, accessToken) {
   const resp = await axios.get(`${instanceUrl}/services/oauth2/userinfo`, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -40,9 +44,10 @@ export async function getUserInfo(instanceUrl, accessToken) {
   return resp.data;
 }
 
-export async function revokeToken(token) {
+export async function revokeToken(token, loginUrl) {
   try {
-    await axios.post(`${sfConfig.loginUrl}/services/oauth2/revoke`, null, {
+    const url = loginUrl || sfConfig.loginUrl;
+    await axios.post(`${url}/services/oauth2/revoke`, null, {
       params: { token },
     });
   } catch (err) {
@@ -50,3 +55,4 @@ export async function revokeToken(token) {
     console.error('Token revocation failed (might be already expired):', err.message);
   }
 }
+

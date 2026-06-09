@@ -12,7 +12,7 @@ const sfConfig = {
   apiVersion: 'v59.0',
 };
 
-export function buildAuthorizeUrl(state, codeChallenge) {
+export function buildAuthorizeUrl(state, codeChallenge, loginUrl) {
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: sfConfig.clientId,
@@ -21,8 +21,10 @@ export function buildAuthorizeUrl(state, codeChallenge) {
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   });
-  return `${sfConfig.loginUrl}/services/oauth2/authorize?${params.toString()}`;
+  const url = loginUrl || sfConfig.loginUrl;
+  return `${url}/services/oauth2/authorize?${params.toString()}`;
 }
+
 
 export default sfConfig;
 

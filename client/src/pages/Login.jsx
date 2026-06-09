@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import useAuth from '../hooks/useAuth'
 import Loader from '../components/Loader'
@@ -10,6 +10,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const errorMsg = searchParams.get('error')
+  const [env, setEnv] = useState('production')
 
   useEffect(() => {
     if (!loading && isLoggedIn) navigate('/dashboard', { replace: true })
@@ -43,7 +44,20 @@ export default function Login() {
           navigating Setup.
         </p>
 
-        <button className="login-btn" onClick={login}>
+        <div className="login-env-group">
+          <label htmlFor="login-env" className="login-env-label">Environment</label>
+          <select
+            id="login-env"
+            className="login-env-select"
+            value={env}
+            onChange={(e) => setEnv(e.target.value)}
+          >
+            <option value="production">Production / Developer Org</option>
+            <option value="sandbox">Sandbox</option>
+          </select>
+        </div>
+
+        <button className="login-btn" onClick={() => login(env)}>
           Login with Salesforce
         </button>
 
@@ -54,4 +68,5 @@ export default function Login() {
     </div>
   )
 }
+
 

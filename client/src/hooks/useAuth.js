@@ -27,9 +27,10 @@ export default function useAuth() {
     return () => { cancelled = true }
   }, [])
 
-  const login = useCallback(() => {
-    apiLogin()
+  const login = useCallback((env) => {
+    apiLogin(env)
   }, [])
+
 
   const logout = useCallback(async () => {
     try {

@@ -63,3 +63,34 @@
   font-size: 12px;
   color: var(--color-text-muted);
 }
+
+.login-env-group {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.login-env-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.login-env-select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.login-env-select:focus {
+  border-color: var(--color-primary);
+}
+
