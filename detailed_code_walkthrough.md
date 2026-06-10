@@ -376,3 +376,206 @@ Main page managing grid loads, toggle states, and recursive polling.
   }, [])
 ```
 * **Explanation**: Essential cleanup function. When the user navigates away or logs out, this hook clears all active `setTimeout` timers to prevent background memory leaks.
+
+---
+
+## 11. `server/server.js`
+The main entry file for spinning up the Node/Express backend.
+
+```javascript
+import 'dotenv/config';
+import app from './app.js';
+
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+```
+* **Explanation**: Initializes the server. By importing `dotenv/config` first, we guarantee that all environment variables defined in the `.env` file (like client secrets, callback URLs, session secrets) are parsed and accessible via `process.env` before any routes or services are initialized. It then imports the Express application from `app.js` and starts listening on the designated `PORT`.
+
+---
+
+## 12. `server/app.js`
+Configures the Express middleware, CORS policies, secure sessions, and API route mappings.
+
+```javascript
+app.set('trust proxy', true);
+```
+* **Explanation**: Tells Express to trust incoming proxy headers (such as `X-Forwarded-Proto` and `X-Forwarded-For`). Since the backend is hosted on Render behind a load balancer/proxy, this is required so Express can correctly detect HTTPS requests and serve secure session cookies.
+
+```javascript
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true,
+}));
+```
+* **Explanation**: Configures Cross-Origin Resource Sharing. `origin` points to the React client's domain. Setting `credentials: true` enables the client browser to include the session cookie in cross-origin XMLHttpRequests/fetch calls to the backend API.
+
+```javascript
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 2,
+  },
+}));
+```
+* **Explanation**: Configures the session cookie. `resave: false` avoids resaving sessions that haven't changed. `saveUninitialized: false` avoids saving empty sessions, reducing store bloat. In production (`isProd`), `secure` is set to `true` (forces HTTPS cookies) and `sameSite` is set to `'none'` (required for cross-domain cookie storage, since the React client is on Vercel and Express server is on Render).
+
+---
+
+## 13. `server/middleware/authCheck.js`
+Protects backend API endpoints from unauthenticated access.
+
+```javascript
+export default function authCheck(req, res, next) {
+  if (!req.session?.sf) {
+    return res.status(401).json({ error: 'Not authenticated — please log in first' });
+  }
+  next();
+}
+```
+* **Explanation**: Intercepts requests destined for protected routes (e.g., retrieving or toggling validation rules). If `req.session.sf` (which holds the access token and login credentials) is missing or undefined, it short-circuits the request chain and returns an HTTP `401 Unauthorized` response. Otherwise, it calls `next()` to pass control to the route handler.
+
+---
+
+## 14. `client/src/main.jsx`
+The client-side entry point that bootstraps React.
+
+```javascript
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>,
+)
+```
+* **Explanation**: Creates the React root under the `#root` div in the HTML structure. It wraps the app inside `BrowserRouter` to activate React Router functionality, and inside React's `StrictMode` to identify potential warnings and rendering lifecycle issues during development.
+
+---
+
+## 15. `client/src/App.jsx`
+Declares page-level routing.
+
+```javascript
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  )
+}
+```
+* **Explanation**: Defines the routing structure using React Router. The home path `/` points to the `Login` screen, `/dashboard` displays the dashboard, and `*` is a wildcard path rendering the `NotFound` page when a user hits an unrecognized URL.
+
+---
+
+## 16. `client/src/components/RuleCard.jsx`
+A reusable card component representing a single Salesforce Validation Rule.
+
+```jsx
+export default function RuleCard({ rule, onToggle, isDeploying }) {
+  const isActive = rule.active
+
+  return (
+    <div className={`rule-card ${isDeploying ? 'rule-card--deploying' : ''}`}>
+      ...
+      <span className={`rule-badge ${isActive ? 'rule-badge--active' : 'rule-badge--inactive'}`}>
+        {isActive ? 'Active' : 'Inactive'}
+      </span>
+      ...
+      {isDeploying ? (
+        <span className="rule-card-deploying">Deploying…</span>
+      ) : (
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={isActive}
+            onChange={() => onToggle(rule.fullName)}
+            disabled={isDeploying}
+          />
+          <span className="toggle-slider" />
+        </label>
+      )}
+    </div>
+  )
+}
+```
+* **Explanation**: Handles styling and interactive toggle input for a rule. Clicking the toggle triggers `onToggle` with the rule's `fullName`. While the deploy is in progress (`isDeploying = true`), the toggle is replaced with a "Deploying..." status tag and the card gets dimmed using CSS classes.
+
+---
+
+## 17. `client/src/components/Header.jsx`
+The application's persistent header bar.
+
+```jsx
+export default function Header({ user, onLogout }) {
+  return (
+    <header className="header">
+      ...
+      {user && (
+        <div className="header-right">
+          <div className="header-user">
+            <span className="header-username">{user.name}</span>
+            {user.orgName && <span className="header-org">{user.orgName}</span>}
+          </div>
+          <button className="header-logout" onClick={onLogout}>Log out</button>
+        </div>
+      )}
+    </header>
+  )
+}
+```
+* **Explanation**: Provides navigational structure. Renders the logo brand and the user's name and organization (retrieved dynamically from the Salesforce session) next to a "Log out" button.
+
+---
+
+## 18. `client/src/components/ErrorBanner.jsx`
+Displays error alerts to the user.
+
+```jsx
+export default function ErrorBanner({ message, onDismiss }) {
+  if (!message) return null
+
+  return (
+    <div className="error-banner" role="alert">
+      <p className="error-banner-msg">{message}</p>
+      {onDismiss && (
+        <button className="error-banner-dismiss" onClick={onDismiss} aria-label="Dismiss">✕</button>
+      )}
+    </div>
+  )
+}
+```
+* **Explanation**: A dismissible component used mainly on the Login screen to alert users when a connection or authorization failure happens. It extracts and displays the URI-decoded `error` query parameter.
+
+---
+
+## 19. `client/src/components/Loader.jsx`
+A lightweight, theme-friendly CSS loading spinner.
+
+```jsx
+export default function Loader({ size = 28, className = '' }) {
+  return (
+    <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <div
+        className={className}
+        style={{ ...spinnerStyle, width: size, height: size }}
+        role="status"
+        aria-label="Loading"
+      />
+    </>
+  )
+}
+```
+* **Explanation**: Renders a customizable circular spinner using standard keyframe animations. Placing the `<style>` tag dynamically inside the React render makes it fully self-contained and easy to reuse without requiring external styles.
+
